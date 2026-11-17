@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Approve an action · Wholesale Ops MCP</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="wrap" style="max-width:760px">
+  <header class="top">
+    <div class="brand">Wholesale Ops MCP<small>Approval page · fictional data</small></div>
+    <nav><a href="./">Overview</a><a href="audit.html">Audit log</a></nav>
+  </header>
+  <div id="root"><p class="empty">Loading…</p></div>
+</div>
+<script src="app.js"></script>
+<script>
+const id = new URLSearchParams(location.search).get("id");
+const root = document.getElementById("root");
+
+function render(a) {
+  const rows = (a.preview.rows || []).map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.before)}</td><td>${esc(r.after)}</td></tr>`).join("");
+  const warnings = (a.preview.warnings || []).map(w => `<div class="warn">${esc(w)}</div>`).join("");
+  const decided = a.status !== "pending";
+  root.innerHTML = `
+    <div class="card">
+      <div class="row"><span class="muted small">Action ${esc(a.code)} · requested ${when(a.requested_at)} by an AI assistant</span>
+      <span class="status s-${esc(a.status)}">${esc(a.status)}</span></div>
+      <h1 style="font-size:26px;margin-top:8px">${esc(a.summary)}</h1>
+      <p style="margin:6px 0 2px"><b>Will change:</b> ${badges(a.systems)}</p>
+      <p class="muted small" style="margin:0">Tool: <code>${esc(a.tool)}</code>${a.client ? " · client: " + esc(a.client) : ""}</p>
+      ${rows ? `<table class="diff" style="margin-top:14px"><thead><tr><th>What</th><th>Now</th><th>After approval</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
+      ${warnings}
+      ${a.preview.message ? `<label>Message the assistant drafted</label><div class="card" style="background:#faf9f6;white-space:pre-wrap;margin:0">${esc(a.preview.message)}</div>` : ""}
+    </div>
+    ${decided ? `
+      <div class="card">
+        <h2>Decided</h2>
+        <p><span class="status s-${esc(a.status)}">${esc(a.status)}</span> by <b>${esc(a.decided_by || "")}</b> · ${when(a.decided_at)}</p>
+        ${a.decision_note ? `<p class="muted">Note: ${esc(a.decision_note)}</p>` : ""}
+        ${a.result ? `<div class="ok">${esc(a.result.message || "")}</div>` : ""}
+        <p class="small muted">The assistant can see this result by checking the action. <a href="audit.html">See it in the audit log →</a></p>
+      </div>` : `
+      <div class="card">
+        <h2>Your decision</h2>
+        <p class="muted small" style="margin-top:-6px">Nothing has changed yet. Only a person on this page can approve; the assistant has no tool to do it.</p>
+        <label for="name">Your name</label>
+        <input type="text" id="name" placeholder="e.g. Dana, AR manager" maxlength="60">
+        <label for="note">Note (optional)</label>
+        <input type="text" id="note" maxlength="200">
+        ${a.reaches_state ? `<label class="check"><input type="checkbox" id="ack"> I understand this will be reported to the state through Metrc, and that undoing it means filing a second, correcting adjustment.</label>` : ""}
+        <div class="actions">
+          <button class="btn-primary" id="approve">Approve and apply</button>
+          <button class="btn-danger" id="reject">Reject</button>
+        </div>
+        <p id="msg"></p>
+      </div>`}
+  `;
+  if (!decided) {
+    document.getElementById("approve").onclick = () => decide("approve", a);
+    document.getElementById("reject").onclick = () => decide("reject", a);
+  }
+}
+
+async function decide(decision, a) {
+  const name = document.getElementById("name").value.trim();
+  const note = document.getElementById("note").value.trim();
+  const msg = document.getElementById("msg");
+  if (!name) { msg.innerHTML = `<span class="warn" style="display:block">Add your name so the audit log shows who decided.</span>`; return; }
+  const ack = a.reaches_state ? document.getElementById("ack").checked : true;
+  if (decision === "approve" && !ack) { msg.innerHTML = `<span class="warn" style="display:block">Tick the Metrc acknowledgement first.</span>`; return; }
+  document.querySelectorAll(".actions button").forEach(b => b.disabled = true);
+  try {
+    const updated = await api("/api/action/decide", { method: "POST", body: JSON.stringify({ id, decision, name, note, acknowledge_state: ack }) });
+    render(updated.action);
+  } catch (e) {
+    msg.innerHTML = `<span class="warn" style="display:block">${esc(e.message)}</span>`;
+    document.querySelectorAll(".actions button").forEach(b => b.disabled = false);
+  }
+}
+
+(async () => {
+  if (!id) { root.innerHTML = `<p class="warn">No action id in the link.</p>`; return; }
+  try { const { action } = await api("/api/action?id=" + encodeURIComponent(id)); render(action); }
+  catch (e) { root.innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
+})();
+</script>
+</body>
+</html>

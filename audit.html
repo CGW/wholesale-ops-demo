@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audit log · Wholesale Ops MCP</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Wholesale Ops MCP<small>Audit log · fictional data</small></div>
+    <nav><a href="./">Overview</a><a href="audit.html">Audit log</a></nav>
+  </header>
+  <h1>Audit log</h1>
+  <p class="lead">Every call the AI made and every decision a person made, newest first. Refreshes every 4 seconds.</p>
+  <div class="card">
+    <div class="row" style="margin-bottom:10px">
+      <div id="filters" class="small"></div>
+      <span class="muted small" id="count"></span>
+    </div>
+    <div id="log"><p class="empty">Loading…</p></div>
+  </div>
+</div>
+<script src="app.js"></script>
+<script>
+const kinds = ["all", "read", "request", "approve", "reject", "apply", "system"];
+let filter = "all";
+document.getElementById("filters").innerHTML = kinds.map(k => `<a href="#" data-k="${k}" style="margin-right:10px;font-weight:600">${k}</a>`).join("");
+document.querySelectorAll("#filters a").forEach(a => a.onclick = e => { e.preventDefault(); filter = a.dataset.k; load(); });
+
+async function load() {
+  try {
+    const { entries } = await api("/api/audit?limit=200");
+    const rows = entries.filter(e => filter === "all" || e.kind === filter);
+    document.getElementById("count").textContent = `${rows.length} entries`;
+    document.getElementById("log").innerHTML = rows.length ? `<table><thead><tr><th>When</th><th>Who</th><th>Kind</th><th>Tool</th><th>Systems</th><th>What happened</th></tr></thead><tbody>${
+      rows.map(e => `<tr><td class="small">${when(e.at)}</td><td class="small">${esc(e.actor)}${e.client ? `<br><span class="muted">${esc(e.client)}</span>` : ""}</td>
+        <td><span class="badge k-${esc(e.kind)}">${esc(e.kind)}</span></td><td class="small"><code>${esc(e.tool || "")}</code></td>
+        <td>${badges(e.systems)}</td><td>${esc(e.summary)}${e.action_id ? ` <a class="small" href="approve.html?id=${esc(e.action_id)}">action →</a>` : ""}</td></tr>`).join("")
+    }</tbody></table>` : `<p class="empty">No entries yet.</p>`;
+  } catch (e) { document.getElementById("log").innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
+}
+load(); setInterval(load, 4000);
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wholesale Ops MCP: a prototype for safe AI writes in an ERP</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Wholesale Ops MCP<small>Prototype by Christopher Ward · fictional data</small></div>
+    <nav><a href="./">Overview</a><a href="audit.html">Audit log</a></nav>
+  </header>
+
+  <h1>An ERP's MCP server where the AI can't change anything on its own.</h1>
+  <p class="lead">Connect this server to Claude and ask about a fictional cannabis distributor's receivables and inventory. Reads answer straight away. Every write becomes a pending action that a person approves on a page this server controls, whatever the AI client's settings. Every call lands in an audit log, and every tool says which outside systems it touches.</p>
+
+  <div class="grid3">
+    <div class="card"><h3>1. Approval the server controls</h3><p>Write tools can only request a change. There is no approve tool, so no assistant can approve its own work. A person approves here, with a before-and-after preview.</p></div>
+    <div class="card"><h3>2. An audit log of every call</h3><p>Every read, request, approval and applied change is recorded: who, which tool, which systems, and what changed.</p></div>
+    <div class="card"><h3>3. Labels on what leaves the ERP</h3><p>Each tool declares whether it reads or writes, and whether it reaches QuickBooks, Metrc or email. Anything reported to the state needs an extra acknowledgement.</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Connect it to Claude</h2>
+    <div class="urlbox"><code id="mcpurl"></code><button class="btn-ghost" id="copy">Copy</button></div>
+    <ol class="steps" style="margin-top:12px">
+      <li>In Claude, open <b>Settings → Connectors → Add custom connector</b>.</li>
+      <li>Name it <b>Wholesale Ops demo</b> and paste the URL above. No sign-in needed: it's a public demo on fictional data.</li>
+      <li>Start a new chat and try one of the prompts below. Keep this page open to approve.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Try these</h2>
+    <ul class="prompts">
+      <li>"Who owes us money? Rank the past-due accounts I should call today."</li>
+      <li>"Brief me on Golden Hour Dispensary before I call them."</li>
+      <li>"Golden Hour paid $10,000 by ACH on INV-2031, reference ACH-90210. Record it."</li>
+      <li>"Draft a friendly past-due reminder to Sunset Botanica and send it."</li>
+      <li>"Twelve Live Resin carts were damaged in Vault C. Adjust the inventory."</li>
+      <li>"Show me everything you've done today."</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="row"><h2 style="margin:0">Waiting for a person</h2><span class="muted small" id="pendingNote"></span></div>
+    <div id="pending" style="margin-top:10px"><p class="empty">Loading…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Tool catalog</h2>
+    <p class="muted small" style="margin-top:-6px">The same list the AI sees, published in one place: what each tool does, whether it reads or writes, and which systems it reaches.</p>
+    <div id="catalog"><p class="empty">Loading…</p></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div><h2 style="margin:0">Reset the demo</h2><p class="muted small" style="margin:4px 0 0">Restores the fictional data and clears approvals and the audit log.</p></div>
+      <button class="btn-ghost" id="reset">Reset demo data</button>
+    </div>
+    <p id="resetMsg" class="small"></p>
+  </div>
+
+  <footer>All companies, people, licenses and Metrc tags here are fictional. QuickBooks, Metrc and email effects are simulated and logged, never sent. Built as a working prototype; not affiliated with any ERP vendor.</footer>
+</div>
+<script src="app.js"></script>
+<script>
+document.getElementById("mcpurl").textContent = MCP_URL;
+document.getElementById("copy").onclick = async () => {
+  await navigator.clipboard.writeText(MCP_URL);
+  document.getElementById("copy").textContent = "Copied";
+  setTimeout(() => document.getElementById("copy").textContent = "Copy", 1500);
+};
+
+async function loadCatalog() {
+  try {
+    const { tools } = await api("/api/catalog");
+    document.getElementById("catalog").innerHTML = `<table><thead><tr><th>Tool</th><th>Access</th><th>Systems it reaches</th><th>Approval</th></tr></thead><tbody>${
+      tools.map(t => `<tr><td><b>${esc(t.name)}</b><br><span class="muted small">${esc(t.summary)}</span></td>
+        <td><span class="badge ${t.access === "write" ? "b-write" : "b-read"}">${esc(t.access)}</span></td>
+        <td>${badges(t.systems)}</td>
+        <td class="small">${t.access === "write" ? (t.reaches_state ? "Person approves + acknowledges state report" : "Person approves") : "None (read only)"}</td></tr>`).join("")
+    }</tbody></table>`;
+  } catch (e) { document.getElementById("catalog").innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
+}
+
+async function loadPending() {
+  try {
+    const { actions } = await api("/api/pending");
+    document.getElementById("pendingNote").textContent = "Refreshes every 4 seconds";
+    if (!actions.length) {
+      document.getElementById("pending").innerHTML = `<p class="empty">Nothing waiting. Ask Claude to record a payment, send a reminder or adjust inventory.</p>`;
+      return;
+    }
+    document.getElementById("pending").innerHTML = `<table><thead><tr><th>Action</th><th>Systems</th><th>Requested</th><th></th></tr></thead><tbody>${
+      actions.map(a => `<tr><td><b>${esc(a.code)}</b> · ${esc(a.summary)}</td><td>${badges(a.systems)}</td><td class="small">${when(a.requested_at)}</td>
+        <td><a class="btn btn-primary" style="text-decoration:none;padding:6px 12px" href="approve.html?id=${esc(a.id)}">Review</a></td></tr>`).join("")
+    }</tbody></table>`;
+  } catch (e) { document.getElementById("pending").innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
+}
+
+document.getElementById("reset").onclick = async () => {
+  const b = document.getElementById("reset");
+  b.disabled = true;
+  try { await api("/api/reset", { method: "POST", body: "{}" }); document.getElementById("resetMsg").textContent = "Demo data reset."; loadPending(); }
+  catch (e) { document.getElementById("resetMsg").textContent = e.message; }
+  b.disabled = false;
+};
+
+loadCatalog(); loadPending(); setInterval(loadPending, 4000);
+</script>
+</body>
+</html>
