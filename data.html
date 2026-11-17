@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Data · Wholesale Ops MCP</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Wholesale Ops MCP<small>Data · fictional data</small></div>
+    <nav><a href="./">Overview</a><a href="data.html">Data</a><a href="audit.html">Audit log</a></nav>
+  </header>
+  <h1>The data the AI works with</h1>
+  <p class="lead">Sierra Ridge Distribution, a fictional cannabis distributor. This is what Claude reads through the connector. Approve an action and watch the numbers change here. Refreshes every 4 seconds.</p>
+
+  <div class="grid3" id="stats"></div>
+
+  <div class="card">
+    <h2>Accounts</h2>
+    <div id="accounts"><p class="empty">Loading…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Open invoices</h2>
+    <div id="invoices"><p class="empty">Loading…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Inventory packages</h2>
+    <p class="muted small" style="margin-top:-6px">Changes here are reported to the state through Metrc, so adjusting them needs an extra acknowledgement.</p>
+    <div id="packages"><p class="empty">Loading…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Recent payments</h2>
+    <div id="payments"><p class="empty">Loading…</p></div>
+  </div>
+
+  <footer>All companies, people, licenses and Metrc tags here are fictional.</footer>
+</div>
+<script src="app.js"></script>
+<script>
+const usd = n => Number(n).toLocaleString("en-US", { style: "currency", currency: "USD" });
+let last = "";
+async function load() {
+  try {
+    const d = await api("/api/data");
+    const sig = JSON.stringify(d);
+    if (sig === last) return;
+    last = sig;
+    const pastDue = d.accounts.reduce((s, a) => s + Number(a.past_due), 0);
+    const open = d.accounts.reduce((s, a) => s + Number(a.open_balance), 0);
+    const late = d.accounts.filter(a => Number(a.past_due) > 0).length;
+    document.getElementById("stats").innerHTML = [
+      ["Past due", usd(pastDue), `${late} accounts`],
+      ["Open receivables", usd(open), `${d.invoices.length} open invoices`],
+      ["Tracked packages", d.packages.length, "in Metrc"],
+    ].map(([k, v, s]) => `<div class="card"><p class="muted small" style="margin:0">${k}</p><p style="font-size:26px;font-weight:700;margin:2px 0">${v}</p><p class="muted small" style="margin:0">${s}</p></div>`).join("");
+    document.getElementById("accounts").innerHTML = `<table><thead><tr><th>Account</th><th>City</th><th>Rep</th><th>Terms</th><th>Last order</th><th style="text-align:right">Open</th><th style="text-align:right">Past due</th></tr></thead><tbody>${
+      d.accounts.map(a => `<tr><td><b>${esc(a.name)}</b><br><span class="muted small">${esc(a.id)}</span></td><td>${esc(a.city)}</td><td>${esc(a.rep)}</td><td>net ${esc(a.terms_days)}</td><td class="small">${esc(a.last_order_date)}</td>
+        <td style="text-align:right">${usd(a.open_balance)}</td><td style="text-align:right;${Number(a.past_due) > 0 ? "color:var(--red);font-weight:700" : ""}">${usd(a.past_due)}</td></tr>`).join("")
+    }</tbody></table>`;
+    document.getElementById("invoices").innerHTML = `<table><thead><tr><th>Invoice</th><th>Account</th><th>Due</th><th style="text-align:right">Amount</th><th style="text-align:right">Open</th><th>Status</th></tr></thead><tbody>${
+      d.invoices.map(i => `<tr><td><b>${esc(i.number)}</b></td><td>${esc(i.account)}</td><td class="small">${esc(i.due)}</td><td style="text-align:right">${usd(i.amount)}</td><td style="text-align:right">${usd(i.balance)}</td>
+        <td class="small">${Number(i.days_over) > 0 ? `<span style="color:var(--red);font-weight:700">${i.days_over} days overdue</span>` : "Not yet due"}${Number(i.paid_amount) > 0 ? " · partly paid" : ""}</td></tr>`).join("")
+    }</tbody></table>`;
+    document.getElementById("packages").innerHTML = `<table><thead><tr><th>Metrc tag</th><th>Product</th><th>Category</th><th>Room</th><th style="text-align:right">Quantity</th></tr></thead><tbody>${
+      d.packages.map(p => `<tr><td class="small"><code>${esc(p.tag)}</code></td><td>${esc(p.product)}</td><td>${esc(p.category)}</td><td>${esc(p.room)}</td><td style="text-align:right"><b>${Number(p.quantity)}</b> ${esc(p.unit)}</td></tr>`).join("")
+    }</tbody></table>`;
+    document.getElementById("payments").innerHTML = `<table><thead><tr><th>Received</th><th>Account</th><th>Invoice</th><th>Method</th><th style="text-align:right">Amount</th><th>Recorded</th></tr></thead><tbody>${
+      d.payments.map(p => `<tr><td class="small">${esc(p.received)}</td><td>${esc(p.account)}</td><td>${esc(p.invoice_number)}</td><td class="small">${esc(p.method)}${p.reference ? " · " + esc(p.reference) : ""}</td><td style="text-align:right">${usd(p.amount)}</td><td class="small muted">${esc(p.recorded_via === "seed" ? "history" : p.recorded_via)}</td></tr>`).join("")
+    }</tbody></table>`;
+  } catch (e) { document.getElementById("accounts").innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
+}
+load(); setInterval(load, 4000);
+</script>
+</body>
+</html>

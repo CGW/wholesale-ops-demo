@@ -10,7 +10,7 @@
 <div class="wrap">
   <header class="top">
     <div class="brand">Wholesale Ops MCP<small>Audit log · fictional data</small></div>
-    <nav><a href="./">Overview</a><a href="audit.html">Audit log</a></nav>
+    <nav><a href="./">Overview</a><a href="data.html">Data</a><a href="audit.html">Audit log</a></nav>
   </header>
   <h1>Audit log</h1>
   <p class="lead">Every call the AI made and every decision a person made, newest first. Refreshes every 4 seconds.</p>
@@ -33,7 +33,7 @@ async function load() {
   try {
     const { entries } = await api("/api/audit?limit=200");
     const rows = entries.filter(e => filter === "all" || e.kind === filter);
-    document.getElementById("count").textContent = `${rows.length} entries`;
+    document.getElementById("count").textContent = `${rows.length} ${rows.length === 1 ? "entry" : "entries"}`;
     document.getElementById("log").innerHTML = rows.length ? `<table><thead><tr><th>When</th><th>Who</th><th>Kind</th><th>Tool</th><th>Systems</th><th>What happened</th></tr></thead><tbody>${
       rows.map(e => `<tr><td class="small">${when(e.at)}</td><td class="small">${esc(e.actor)}${e.client ? `<br><span class="muted">${esc(e.client)}</span>` : ""}</td>
         <td><span class="badge k-${esc(e.kind)}">${esc(e.kind)}</span></td><td class="small"><code>${esc(e.tool || "")}</code></td>

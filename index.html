@@ -10,11 +10,11 @@
 <div class="wrap">
   <header class="top">
     <div class="brand">Wholesale Ops MCP<small>Prototype by Christopher Ward · fictional data</small></div>
-    <nav><a href="./">Overview</a><a href="audit.html">Audit log</a></nav>
+    <nav><a href="./">Overview</a><a href="data.html">Data</a><a href="audit.html">Audit log</a></nav>
   </header>
 
-  <h1>An experiment: what an ERP's MCP server is missing before AI writes go everywhere.</h1>
-  <p class="lead">I read the published specs for a cannabis ERP's MCP server and wanted to test one idea: as AI assistants start writing to the ERP, three things are missing. A confirm step the ERP controls, an audit log, and a clear label on which actions reach Metrc or QuickBooks. This is a working version of all three, on fictional data. Connect it to Claude and try it.</p>
+  <h1>My take on an MCP server for a cannabis ERP.</h1>
+  <p class="lead">I wanted to explore how AI assistants could work with an ERP in practice, so I built my own version on fictional data. Along the way I added a few things I'd want as an operator: an approval step on the server, an audit log, and labels showing which actions reach Metrc or QuickBooks. Connect it to Claude and try it.</p>
 
   <div class="grid3">
     <div class="card"><h3>1. Approval the server controls</h3><p>Write tools can only request a change. There is no approve tool, so no assistant can approve its own work. A person approves here, with a before-and-after preview.</p></div>
@@ -23,18 +23,18 @@
   </div>
 
   <div class="card">
-    <h2>What the extra step gets the ERP</h2>
+    <h2>Why I added those pieces</h2>
     <table>
       <tbody>
-        <tr><td style="width:34%"><b>A guarantee that holds in every AI client</b></td><td>Today, whether the assistant asks before writing depends on the customer's Claude or ChatGPT settings. A server-side confirm means the answer to "can the AI change my books on its own?" is always no, whichever assistant they use.</td></tr>
-        <tr><td><b>Writes can ship sooner</b></td><td>With a human gate on the server, more write tools can go live with less risk, instead of rolling them out one at a time.</td></tr>
-        <tr><td><b>An answer for compliance buyers</b></td><td>Anything reported to the state is labelled, warned and acknowledged by a named person. That's what a multi-state operator's compliance lead needs before saying yes.</td></tr>
-        <tr><td><b>"Who did that?" in one click</b></td><td>The audit log settles disputes and support tickets: which person, which assistant, which tool, what changed.</td></tr>
-        <tr><td><b>Something to charge for</b></td><td>Reads can stay free. Governed writes, approval rules and audit history are a natural paid or enterprise tier once the beta ends.</td></tr>
-        <tr><td><b>Product signal</b></td><td>Every request, approval and rejection shows which writes people trust, which ones they reject, and where it's safe to auto-approve next.</td></tr>
+        <tr><td style="width:34%"><b>The same answer in every AI client</b></td><td>Approval happens on the server, so the AI can't change records on its own, whichever assistant someone connects.</td></tr>
+        <tr><td><b>Room to add more write actions</b></td><td>With a person approving on the server, new write tools can be tried with less risk.</td></tr>
+        <tr><td><b>Comfort for compliance teams</b></td><td>Anything reported to the state is labelled, explained and acknowledged by a named person.</td></tr>
+        <tr><td><b>"Who did that?" in one click</b></td><td>The audit log shows which person, which assistant, which tool and what changed.</td></tr>
+        <tr><td><b>A natural premium feature</b></td><td>Approval rules and audit history are the kind of controls larger customers ask for and pay for.</td></tr>
+        <tr><td><b>Product signal</b></td><td>Every request, approval and rejection shows which actions people trust, and where it's safe to auto-approve next.</td></tr>
       </tbody>
     </table>
-    <p class="muted small" style="margin:12px 0 0">The cost is one extra step per write. Next steps would remove most of it: approval rules (e.g. auto-approve payments under a limit for some roles), batch approval, and approving inside the ERP or in Slack.</p>
+    <p class="muted small" style="margin:12px 0 0">The trade-off is one extra step per write. Approval rules (e.g. auto-approve small payments for some roles), batch approval, and approving inside the ERP or in Slack would remove most of it.</p>
   </div>
 
   <div class="card">
@@ -45,6 +45,7 @@
       <li>Name it <b>Wholesale Ops demo</b> and paste the URL above. No sign-in needed: it's a public demo on fictional data.</li>
       <li>Start a new chat and try one of the prompts below. Keep this page open to approve.</li>
     </ol>
+    <p class="muted small" style="margin:12px 0 0">No Claude handy? There's already an action waiting below. Review and approve it, then see the balance change on the <a href="data.html">Data page</a> and the steps in the <a href="audit.html">audit log</a>.</p>
   </div>
 
   <div class="card">
